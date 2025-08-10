@@ -1,0 +1,96 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": { "major": 3, "minor": 22 },
+
+  "configurePresets": [
+    {
+      "name": "windows-vs",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "build/windows-vs"
+    },
+
+    { "name": "android-debug",
+      "binaryDir": "build/android-arm64-debug",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    { "name": "android-release",
+      "binaryDir": "build/android-arm64-release",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    { "name": "android-relwithdebinfo",
+      "binaryDir": "build/android-arm64-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    { "name": "android-releasenooptim",
+      "binaryDir": "build/android-arm64-releasenooptim",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "CMAKE_BUILD_TYPE": "ReleaseNoOptim"
+      }
+    },
+
+    {
+      "name": "ios-xcode",
+      "generator": "Xcode",
+      "binaryDir": "build/ios-xcode",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_SYSROOT": "iphoneos"
+      }
+    },
+    {
+      "name": "ios-sim-xcode",
+      "generator": "Xcode",
+      "binaryDir": "build/ios-sim-xcode",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_SYSROOT": "iphonesimulator"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    { "name": "win-Debug",            "configurePreset": "windows-vs", "configuration": "Debug" },
+    { "name": "win-Release",          "configurePreset": "windows-vs", "configuration": "Release" },
+    { "name": "win-RelWithDebInfo",   "configurePreset": "windows-vs", "configuration": "RelWithDebInfo" },
+    { "name": "win-ReleaseNoOptim",   "configurePreset": "windows-vs", "configuration": "ReleaseNoOptim" },
+
+    { "name": "android-Debug",            "configurePreset": "android-debug" },
+    { "name": "android-Release",          "configurePreset": "android-release" },
+    { "name": "android-RelWithDebInfo",   "configurePreset": "android-relwithdebinfo" },
+    { "name": "android-ReleaseNoOptim",   "configurePreset": "android-releasenooptim" },
+
+    { "name": "ios-Debug",            "configurePreset": "ios-xcode",     "configuration": "Debug" },
+    { "name": "ios-Release",          "configurePreset": "ios-xcode",     "configuration": "Release" },
+    { "name": "ios-RelWithDebInfo",   "configurePreset": "ios-xcode",     "configuration": "RelWithDebInfo" },
+    { "name": "ios-ReleaseNoOptim",   "configurePreset": "ios-xcode",     "configuration": "ReleaseNoOptim" },
+
+    { "name": "ios-sim-Debug",            "configurePreset": "ios-sim-xcode", "configuration": "Debug" },
+    { "name": "ios-sim-Release",          "configurePreset": "ios-sim-xcode", "configuration": "Release" },
+    { "name": "ios-sim-RelWithDebInfo",   "configurePreset": "ios-sim-xcode", "configuration": "RelWithDebInfo" },
+    { "name": "ios-sim-ReleaseNoOptim",   "configurePreset": "ios-sim-xcode", "configuration": "ReleaseNoOptim" }
+  ]
+}
