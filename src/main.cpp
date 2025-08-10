@@ -1,7 +1,7 @@
 #include <SDL.h>
 #include <cstdio>
 
-int main (int argc, char* argv[]) {
+int SDL_main(int argc, char* argv[]) {
     SDL_SetMainReady();
     
     // Initialize SDL video and event subsystems
