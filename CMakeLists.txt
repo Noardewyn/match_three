@@ -73,6 +73,10 @@ endif()
 # -----------------------------------------------------------------------------
 add_executable(match_three
   src/main.cpp
+  src/game.cpp
+  src/board.cpp
+  src/renderer.cpp
+  src/input.cpp
 )
 
 # Guard: on iOS we must NOT have SDL CMake targets (we link xcframework instead)

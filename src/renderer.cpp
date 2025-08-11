@@ -1,0 +1,80 @@
+#include "renderer.h"
+
+BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) const
+{
+    // Fit the board to the shorter window side with some padding.
+    const int cols = Board::kWidth;
+    const int rows = Board::kHeight;
+
+    const int max_board_w = window_w - 20;
+    const int max_board_h = window_h - 20;
+
+    // cell_size * cols + gap*(cols-1) <= max_board_w  (same for height)
+    const int cell_w = (max_board_w - gap_px * (cols - 1)) / cols;
+    const int cell_h = (max_board_h - gap_px * (rows - 1)) / rows;
+    const int cell_size = std::max(8, std::min(cell_w, cell_h));
+
+    const int width_px = cell_size * cols + gap_px * (cols - 1);
+    const int height_px = cell_size * rows + gap_px * (rows - 1);
+
+    // Center the board.
+    const int origin_x = (window_w - width_px) / 2;
+    const int origin_y = (window_h - height_px) / 2;
+
+    BoardLayout layout;
+    layout.origin_x = origin_x;
+    layout.origin_y = origin_y;
+    layout.cell_size = cell_size;
+    layout.gap = gap_px;
+    layout.width_px = width_px;
+    layout.height_px = height_px;
+    return layout;
+}
+
+void Renderer::SetColorForCell(CellType type) const
+{
+    switch (type)
+    {
+        case CellType::Red:     SDL_SetRenderDrawColor(r_, 230, 68, 68, 255); break;
+        case CellType::Green:   SDL_SetRenderDrawColor(r_, 80, 200, 120, 255); break;
+        case CellType::Blue:    SDL_SetRenderDrawColor(r_, 77, 148, 255, 255); break;
+        case CellType::Yellow:  SDL_SetRenderDrawColor(r_, 245, 211, 66, 255); break;
+        case CellType::Purple:  SDL_SetRenderDrawColor(r_, 170, 110, 255, 255); break;
+        case CellType::Orange:  SDL_SetRenderDrawColor(r_, 255, 160, 80, 255); break;
+        default:                SDL_SetRenderDrawColor(r_, 200, 200, 200, 255); break;
+    }
+}
+
+void Renderer::Draw(const Board & board, const BoardLayout & layout) const
+{
+    // Clear background
+    SDL_SetRenderDrawColor(r_, 22, 10, 40, 255);
+    SDL_RenderClear(r_);
+
+    // Optional rounded board background
+    SDL_Rect bg { layout.origin_x - 8, layout.origin_y - 8, layout.width_px + 16, layout.height_px + 16 };
+    SDL_SetRenderDrawColor(r_, 40, 20, 70, 255);
+    SDL_RenderFillRect(r_, &bg);
+
+    // Draw cells
+    for (int y = 0; y < Board::kHeight; ++y)
+    {
+        for (int x = 0; x < Board::kWidth; ++x)
+        {
+            const IVec2 p {x, y};
+            const int px = layout.origin_x + x * (layout.cell_size + layout.gap);
+            const int py = layout.origin_y + y * (layout.cell_size + layout.gap);
+
+            SDL_Rect rect { px, py, layout.cell_size, layout.cell_size };
+
+            SetColorForCell(board.Get(p));
+            SDL_RenderFillRect(r_, &rect);
+
+            // Optional subtle outline
+            SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
+            SDL_RenderDrawRect(r_, &rect);
+        }
+    }
+
+    SDL_RenderPresent(r_);
+}
