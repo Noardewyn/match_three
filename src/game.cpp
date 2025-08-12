@@ -1,6 +1,7 @@
 #include "game.h"
 
 #include <chrono>
+#include <optional>
 
 static float NowSeconds()
 {
@@ -18,7 +19,7 @@ bool Game::Init()
         return false;
     }
 
-    window_ = SDL_CreateWindow("Match Three", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    window_ = SDL_CreateWindow("Match3 (Dual Highlight)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                720, 1280, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
     if (!window_)
     {
@@ -54,7 +55,10 @@ void Game::Run()
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-            if (e.type == SDL_QUIT) quit = true;
+            if (e.type == SDL_QUIT)
+            {
+                quit = true;
+            }
             else if (e.type == SDL_WINDOWEVENT &&
                      (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
             {
@@ -77,6 +81,11 @@ void Game::Run()
                         }
                     }
                 }
+                else
+                {
+                    // Even when not idle, still feed motion events to InputManager.
+                    input_.HandleEvent(e, layout_);
+                }
             }
         }
 
@@ -87,8 +96,17 @@ void Game::Run()
 
         StepStateMachine();
 
+        std::optional<IVec2> primary;
+        std::optional<IVec2> secondary;
+
+        if (phase_ == Phase::Idle && !anims_.HasActive())
+        {
+            primary = input_.SelectedCell();
+            secondary = input_.PotentialTargetCell(layout_);
+        }
+
         drawer_->DrawBackground(layout_);
-        drawer_->DrawTiles(vboard_.Tiles(), layout_);
+        drawer_->DrawTiles(vboard_.Tiles(), layout_, primary, secondary, now);
         SDL_Delay(1);
     }
 }

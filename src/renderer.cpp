@@ -1,5 +1,7 @@
 #include "renderer.h"
-#include "visuals.h"
+
+#include <algorithm>
+#include <cmath>
 
 BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) const
 {
@@ -32,15 +34,44 @@ BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) cons
 void Renderer::SetColorForCell(CellType type, uint8_t alpha) const
 {
     SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
+
     switch (type)
     {
-        case CellType::Red:     SDL_SetRenderDrawColor(r_, 230, 68, 68, alpha); break;
-        case CellType::Green:   SDL_SetRenderDrawColor(r_, 80, 200, 120, alpha); break;
-        case CellType::Blue:    SDL_SetRenderDrawColor(r_, 77, 148, 255, alpha); break;
-        case CellType::Yellow:  SDL_SetRenderDrawColor(r_, 245, 211, 66, alpha); break;
-        case CellType::Purple:  SDL_SetRenderDrawColor(r_, 170, 110, 255, alpha); break;
-        case CellType::Orange:  SDL_SetRenderDrawColor(r_, 255, 160, 80, alpha); break;
-        default:                SDL_SetRenderDrawColor(r_, 200, 200, 200, alpha); break;
+        case CellType::Red:
+        {
+            SDL_SetRenderDrawColor(r_, 230, 68, 68, alpha);
+            break;
+        }
+        case CellType::Green:
+        {
+            SDL_SetRenderDrawColor(r_, 80, 200, 120, alpha);
+            break;
+        }
+        case CellType::Blue:
+        {
+            SDL_SetRenderDrawColor(r_, 77, 148, 255, alpha);
+            break;
+        }
+        case CellType::Yellow:
+        {
+            SDL_SetRenderDrawColor(r_, 245, 211, 66, alpha);
+            break;
+        }
+        case CellType::Purple:
+        {
+            SDL_SetRenderDrawColor(r_, 170, 110, 255, alpha);
+            break;
+        }
+        case CellType::Orange:
+        {
+            SDL_SetRenderDrawColor(r_, 255, 160, 80, alpha);
+            break;
+        }
+        default:
+        {
+            SDL_SetRenderDrawColor(r_, 200, 200, 200, alpha);
+            break;
+        }
     }
 }
 
@@ -53,9 +84,7 @@ void Renderer::DrawBackground(const BoardLayout & layout) const
     SDL_SetRenderDrawColor(r_, 40, 20, 70, 255);
     SDL_RenderFillRect(r_, &bg);
 
-    // Optional grid shadows
     SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
-
     for (int y = 0; y < Board::kHeight; ++y)
     {
         for (int x = 0; x < Board::kWidth; ++x)
@@ -68,11 +97,69 @@ void Renderer::DrawBackground(const BoardLayout & layout) const
     }
 }
 
-void Renderer::DrawTiles(const std::vector<VisualTile> & tiles, const BoardLayout & layout) const
+void Renderer::DrawHighlightCell(const BoardLayout & layout,
+                                 const IVec2 & cell,
+                                 bool is_primary,
+                                 float pulse_t) const
 {
+    if (cell.x < 0 || cell.y < 0 || cell.x >= Board::kWidth || cell.y >= Board::kHeight)
+    {
+        return;
+    }
+
+    const int base_x = layout.origin_x + cell.x * (layout.cell_size + layout.gap);
+    const int base_y = layout.origin_y + cell.y * (layout.cell_size + layout.gap);
+
+    const float freq = 2.0f;
+    const float phase = std::sin(2.0f * 3.14159265f * freq * pulse_t);
+    const float scale = 1.1f + 0.10f * phase;
+
+    const int w = static_cast<int>(layout.cell_size * scale);
+    const int h = static_cast<int>(layout.cell_size * scale);
+    const int cx = base_x + layout.cell_size / 2;
+    const int cy = base_y + layout.cell_size / 2;
+
+    SDL_Rect r { cx - w / 2, cy - h / 2, w, h };
+
+    // Semi-transparent fill (different tint for primary / secondary).
+    SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
+    if (is_primary)
+    {
+        SDL_SetRenderDrawColor(r_, 255, 255, 255, 60);   // warm
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(r_, 255, 255, 0, 60);   // cool
+    }
+    SDL_RenderFillRect(r_, &r);
+
+    // Thick border: 5 px primary, 4 px secondary.
+    const int thick = is_primary ? 20 : 20;
+    if (is_primary)
+    {
+        SDL_SetRenderDrawColor(r_, 255, 255, 255, 200);
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(r_, 255, 255, 0, 200);
+    }
+
+    for (int i = 0; i < thick; ++i)
+    {
+        SDL_Rect outline { r.x - i, r.y - i, r.w + i * 2, r.h + i * 2 };
+        SDL_RenderDrawRect(r_, &outline);
+    }
+}
+
+void Renderer::DrawTiles(const std::vector<VisualTile> & tiles,
+                         const BoardLayout & layout,
+                         const std::optional<IVec2> & primary,
+                         const std::optional<IVec2> & secondary,
+                         float pulse_t) const
+{
+    // Draw tiles
     for (const auto & t : tiles)
     {
-        // Center-based scaling
         const float cx = t.x + layout.cell_size * 0.5f;
         const float cy = t.y + layout.cell_size * 0.5f;
         const int w = static_cast<int>(layout.cell_size * t.sx);
@@ -87,6 +174,20 @@ void Renderer::DrawTiles(const std::vector<VisualTile> & tiles, const BoardLayou
 
         SDL_SetRenderDrawColor(r_, 15, 5, 35, a);
         SDL_RenderDrawRect(r_, &rect);
+    }
+
+    // Draw highlights on top (avoid double-drawing the same cell).
+    if (primary.has_value())
+    {
+        DrawHighlightCell(layout, *primary, true, pulse_t);
+    }
+
+    if (secondary.has_value())
+    {
+        if (!primary.has_value() || !(secondary->x == primary->x && secondary->y == primary->y))
+        {
+            DrawHighlightCell(layout, *secondary, false, pulse_t);
+        }
     }
 
     SDL_RenderPresent(r_);
