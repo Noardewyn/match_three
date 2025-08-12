@@ -18,7 +18,7 @@ bool Game::Init()
         return false;
     }
 
-    window_ = SDL_CreateWindow("Match3 (Animations)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    window_ = SDL_CreateWindow("Match Three", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                720, 1280, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
     if (!window_)
     {
@@ -54,29 +54,24 @@ void Game::Run()
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-            if (e.type == SDL_QUIT)
-            {
-                quit = true;
-            }
-            else if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
+            if (e.type == SDL_QUIT) quit = true;
+            else if (e.type == SDL_WINDOWEVENT &&
+                     (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
             {
                 UpdateLayout();
                 vboard_.SnapToLayout(layout_);
             }
             else
             {
-                // Accept input only when idle and no active animations
                 if (phase_ == Phase::Idle && !anims_.HasActive())
                 {
                     if (auto req = input_.HandleEvent(e, layout_))
                     {
                         if (board_.InBounds(req->a) && board_.InBounds(req->b) && board_.AreAdjacent(req->a, req->b))
                         {
-                            // Start swap: swap logically first.
                             board_.Swap(req->a, req->b);
                             last_swap_a_ = req->a;
                             last_swap_b_ = req->b;
-
                             current_group_ = vboard_.AnimateSwap(req->a, req->b, layout_, anims_, t_swap_);
                             phase_ = Phase::SwapAnim;
                         }
@@ -85,19 +80,15 @@ void Game::Run()
             }
         }
 
-        // Update animations
         float now = NowSeconds();
         float dt = now - prev;
         prev = now;
         anims_.Update(dt);
 
-        // When current animation group finishes, progress state machine
         StepStateMachine();
 
-        // Render
         drawer_->DrawBackground(layout_);
         drawer_->DrawTiles(vboard_.Tiles(), layout_);
-
         SDL_Delay(1);
     }
 }
@@ -107,16 +98,8 @@ void Game::Shutdown()
     delete drawer_;
     drawer_ = nullptr;
 
-    if (sdl_renderer_)
-    {
-        SDL_DestroyRenderer(sdl_renderer_);
-        sdl_renderer_ = nullptr;
-    }
-    if (window_)
-    {
-        SDL_DestroyWindow(window_);
-        window_ = nullptr;
-    }
+    if (sdl_renderer_) { SDL_DestroyRenderer(sdl_renderer_); sdl_renderer_ = nullptr; }
+    if (window_) { SDL_DestroyWindow(window_); window_ = nullptr; }
 
     SDL_Quit();
 }
@@ -124,25 +107,15 @@ void Game::Shutdown()
 void Game::UpdateLayout()
 {
     int w = 0, h = 0;
-    if (sdl_renderer_)
-    {
-        SDL_GetRendererOutputSize(sdl_renderer_, &w, &h);
-    }
-    else
-    {
-        SDL_GetWindowSize(window_, &w, &h);
-    }
+    if (sdl_renderer_) SDL_GetRendererOutputSize(sdl_renderer_, &w, &h);
+    else SDL_GetWindowSize(window_, &w, &h);
 
     layout_ = drawer_->ComputeLayout(w, h, 6);
 }
 
 void Game::StepStateMachine()
 {
-    // Progress only when no active animations for the last scheduled group.
-    if (current_group_ != 0 && anims_.IsGroupActive(current_group_))
-    {
-        return;
-    }
+    if (current_group_ != 0 && anims_.IsGroupActive(current_group_)) return;
 
     switch (phase_)
     {
@@ -151,7 +124,6 @@ void Game::StepStateMachine()
 
         case Phase::SwapAnim:
         {
-            // Swap animation finished → check matches.
             phase_ = Phase::CheckAfterSwap;
             // fallthrough
         }
@@ -159,15 +131,19 @@ void Game::StepStateMachine()
         {
             if (!board_.FindMatches(last_mask_))
             {
-                // No matches: revert swap visually + logically
+                // Revert swap
                 board_.Swap(last_swap_a_, last_swap_b_);
                 current_group_ = vboard_.AnimateSwap(last_swap_b_, last_swap_a_, layout_, anims_, t_swap_);
-                phase_ = Phase::Idle; // After revert we will return to Idle; no cascades.
+                phase_ = Phase::Idle;
             }
             else
             {
-                // There are matches → fade them
-                current_group_ = vboard_.AnimateFadeMask(last_mask_, anims_, t_fade_);
+                // Pulse + Fade together in a single group
+                const uint64_t g = anims_.BeginGroup();
+                vboard_.AnimatePulseMask(last_mask_, anims_, t_fade_ * 1.0f, 0.7f, g);
+                vboard_.AnimateFadeMask(last_mask_, anims_, t_fade_, g);
+                anims_.EndGroup();
+                current_group_ = g;
                 phase_ = Phase::FadeMatches;
             }
             break;
@@ -175,38 +151,55 @@ void Game::StepStateMachine()
 
         case Phase::FadeMatches:
         {
-            // Fade done → remove visuals, collapse + spawn with plan, animate.
+            // Remove visuals, collapse logically and animate fall + spawn
             vboard_.RemoveByMask(last_mask_);
             last_moves_.clear();
             last_spawns_.clear();
             board_.CollapseAndRefillPlanned(last_mask_, last_moves_, last_spawns_);
 
-            // First animate moves (fall), then spawns in the same group so they end together.
             anims_.BeginGroup();
-            const uint64_t g1 = vboard_.AnimateMoves(last_moves_, layout_, anims_, t_drop_);
-            const uint64_t g2 = vboard_.AnimateSpawns(last_spawns_, layout_, anims_, t_drop_);
+            vboard_.AnimateMoves(last_moves_, layout_, anims_, t_drop_, anims_.CurrentGroup());
+            vboard_.AnimateSpawns(last_spawns_, layout_, anims_, t_drop_, anims_.CurrentGroup());
             anims_.EndGroup();
-            current_group_ = (g1 != 0) ? g1 : g2;
+            current_group_ = anims_.CurrentGroup(); // last BeginGroup id
+            pending_bump_ = true;
             phase_ = Phase::DropAndSpawn;
             break;
         }
 
         case Phase::DropAndSpawn:
         {
-            // Dropping + spawning finished → check for cascades.
+            if (pending_bump_)
+            {
+                // First time we enter here after drop: schedule bump on all landing cells
+                std::vector<IVec2> landed;
+                landed.reserve(last_moves_.size() + last_spawns_.size());
+                for (const auto & m : last_moves_) landed.push_back(m.to);
+                for (const auto & s : last_spawns_) landed.push_back(s.to);
+
+                current_group_ = vboard_.AnimateBumpCells(landed, anims_, t_bump_, 1.10f);
+                pending_bump_ = false;
+                break;
+            }
+
+            // Bump finished → go to cascade check
             phase_ = Phase::CascadeCheck;
             // fallthrough
         }
+
         case Phase::CascadeCheck:
         {
             if (board_.FindMatches(last_mask_))
             {
-                current_group_ = vboard_.AnimateFadeMask(last_mask_, anims_, t_fade_);
+                const uint64_t g = anims_.BeginGroup();
+                vboard_.AnimatePulseMask(last_mask_, anims_, t_fade_ * 1.0f, 0.7f, g);
+                vboard_.AnimateFadeMask(last_mask_, anims_, t_fade_, g);
+                anims_.EndGroup();
+                current_group_ = g;
                 phase_ = Phase::FadeMatches;
             }
             else
             {
-                // Done
                 phase_ = Phase::Idle;
                 current_group_ = 0;
             }

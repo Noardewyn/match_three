@@ -6,6 +6,7 @@
 #include "visuals.h"
 
 #include <SDL.h>
+
 class Game
 {
 public:
@@ -43,10 +44,12 @@ private:
     std::vector<Move> last_moves_;
     std::vector<Spawn> last_spawns_;
 
-    // Timings
+    bool pending_bump_ {false};
+
     const float t_swap_ = 0.15f;
-    const float t_fade_ = 0.12f;
-    const float t_drop_ = 0.18f;
+    const float t_fade_ = 0.14f;
+    const float t_drop_ = 0.20f;
+    const float t_bump_ = 0.10f;
 
     void UpdateLayout();
     void StepStateMachine();

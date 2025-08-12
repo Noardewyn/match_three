@@ -55,6 +55,7 @@ void Renderer::DrawBackground(const BoardLayout & layout) const
 
     // Optional grid shadows
     SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
+
     for (int y = 0; y < Board::kHeight; ++y)
     {
         for (int x = 0; x < Board::kWidth; ++x)
@@ -71,9 +72,15 @@ void Renderer::DrawTiles(const std::vector<VisualTile> & tiles, const BoardLayou
 {
     for (const auto & t : tiles)
     {
-        const int px = static_cast<int>(t.x);
-        const int py = static_cast<int>(t.y);
-        SDL_Rect rect { px, py, layout.cell_size, layout.cell_size };
+        // Center-based scaling
+        const float cx = t.x + layout.cell_size * 0.5f;
+        const float cy = t.y + layout.cell_size * 0.5f;
+        const int w = static_cast<int>(layout.cell_size * t.sx);
+        const int h = static_cast<int>(layout.cell_size * t.sy);
+        const int px = static_cast<int>(cx - w * 0.5f);
+        const int py = static_cast<int>(cy - h * 0.5f);
+
+        SDL_Rect rect { px, py, w, h };
         const uint8_t a = static_cast<uint8_t>(std::clamp(t.alpha, 0.0f, 1.0f) * 255.0f);
         SetColorForCell(t.type, a);
         SDL_RenderFillRect(r_, &rect);

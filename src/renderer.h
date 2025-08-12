@@ -2,6 +2,9 @@
 #include "board.h"
 
 #include <SDL.h>
+#include <vector>
+
+struct VisualTile;
 
 struct BoardLayout
 {
@@ -20,10 +23,8 @@ public:
 
     BoardLayout ComputeLayout(int window_w, int window_h, int gap_px = 4) const;
 
-    // Draw background grid + tiles from VisualBoard (positions in pixels, alpha).
-    // We forward-declare VisualBoard to avoid include cycle.
     void DrawBackground(const BoardLayout & layout) const;
-    void DrawTiles(const std::vector<struct VisualTile> & tiles, const BoardLayout & layout) const;
+    void DrawTiles(const std::vector<VisualTile> & tiles, const BoardLayout & layout) const;
 
 private:
     SDL_Renderer * r_ {nullptr};
