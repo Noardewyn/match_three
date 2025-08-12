@@ -77,6 +77,8 @@ add_executable(match_three
   src/board.cpp
   src/renderer.cpp
   src/input.cpp
+  src/animation.cpp
+  src/visuals.cpp
 )
 
 # Guard: on iOS we must NOT have SDL CMake targets (we link xcframework instead)

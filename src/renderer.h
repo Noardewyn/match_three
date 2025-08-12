@@ -19,10 +19,13 @@ public:
     explicit Renderer(SDL_Renderer * r) : r_(r) {}
 
     BoardLayout ComputeLayout(int window_w, int window_h, int gap_px = 4) const;
-    void Draw(const Board & board, const BoardLayout & layout) const;
+
+    // Draw background grid + tiles from VisualBoard (positions in pixels, alpha).
+    // We forward-declare VisualBoard to avoid include cycle.
+    void DrawBackground(const BoardLayout & layout) const;
+    void DrawTiles(const std::vector<struct VisualTile> & tiles, const BoardLayout & layout) const;
 
 private:
     SDL_Renderer * r_ {nullptr};
-    void SetColorForCell(CellType type) const;
+    void SetColorForCell(CellType type, uint8_t alpha) const;
 };
-

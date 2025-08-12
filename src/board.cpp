@@ -12,7 +12,6 @@ void Board::GenerateInitial(uint32_t seed)
 {
     rng_.seed(seed);
 
-    // Fill grid ensuring no immediate 3-in-a-row or 3-in-a-column
     for (int y = 0; y < kHeight; ++y)
     {
         for (int x = 0; x < kWidth; ++x)
@@ -50,41 +49,57 @@ void Board::Swap(const IVec2 & a, const IVec2 & b)
     {
         return;
     }
-    const int ia = Index(a);
-    const int ib = Index(b);
-    std::swap(cells_[ia], cells_[ib]);
+    std::swap(cells_[Index(a)], cells_[Index(b)]);
 }
 
-bool Board::TrySwapAndResolve(const IVec2 & a, const IVec2 & b)
+bool Board::FindMatches(std::vector<bool> & out_mask) const
 {
-    if (!InBounds(a) || !InBounds(b) || !AreAdjacent(a, b))
+    out_mask.assign(kWidth * kHeight, false);
+    return FindMatchesMask(out_mask);
+}
+
+int Board::CollapseAndRefillPlanned(const std::vector<bool> & mask,
+                                    std::vector<Move> & out_moves,
+                                    std::vector<Spawn> & out_spawns)
+{
+    out_moves.clear();
+    out_spawns.clear();
+
+    int removed = 0;
+    for (int x = 0; x < kWidth; ++x)
     {
-        return false;
+        int write_y = kHeight - 1;
+
+        // Move survivors down, recording moves.
+        for (int y = kHeight - 1; y >= 0; --y)
+        {
+            const int idx = Index({x, y});
+            if (!mask[idx])
+            {
+                if (write_y != y)
+                {
+                    out_moves.push_back(Move{ IVec2{x, y}, IVec2{x, write_y} });
+                }
+                cells_[Index({x, write_y})] = cells_[idx];
+                --write_y;
+            }
+            else
+            {
+                ++removed;
+            }
+        }
+
+        // Spawn new candies at the top.
+        int spawn_order = 0;
+        for (int y = write_y; y >= 0; --y)
+        {
+            CellType t = RandomCandy();
+            cells_[Index({x, y})] = t;
+            out_spawns.push_back(Spawn{ IVec2{x, y}, t, spawn_order++ });
+        }
     }
 
-    // Perform tentative swap.
-    Swap(a, b);
-
-    // Look for matches after swap.
-    std::vector<bool> mask(kWidth * kHeight, false);
-    if (!FindMatchesMask(mask))
-    {
-        // No matches – revert swap.
-        Swap(a, b);
-        return false;
-    }
-
-    // Resolve cascades until there are no more matches.
-    // Safety cap prevents infinite loops in case of a bug.
-    int safety_cap = 64;
-    do
-    {
-        CollapseColumnsAndRefill(mask);
-        mask.assign(kWidth * kHeight, false);
-    }
-    while (--safety_cap > 0 && FindMatchesMask(mask));
-
-    return true;
+    return removed;
 }
 
 int Board::Index(const IVec2 & p) const
@@ -159,38 +174,6 @@ bool Board::FindMatchesMask(std::vector<bool> & out_mask) const
     return any;
 }
 
-int Board::CollapseColumnsAndRefill(const std::vector<bool> & mask)
-{
-    int removed = 0;
-    for (int x = 0; x < kWidth; ++x)
-    {
-        // Move non-removed cells down.
-        int write_y = kHeight - 1;
-        for (int y = kHeight - 1; y >= 0; --y)
-        {
-            const int idx = Index({x, y});
-            if (!mask[idx])
-            {
-                cells_[Index({x, write_y})] = cells_[idx];
-                --write_y;
-            }
-            else
-            {
-                ++removed;
-            }
-        }
-
-        // Fill the top part with new random candies.
-        for (int y = write_y; y >= 0; --y)
-        {
-            // Here we could use RandomCandyAvoiding to reduce immediate matches,
-            // but allowing them creates natural cascades which is desired.
-            cells_[Index({x, y})] = RandomCandy();
-        }
-    }
-    return removed;
-}
-
 CellType Board::RandomCandy()
 {
     std::uniform_int_distribution<int> dist(0, static_cast<int>(CellType::Count) - 1);
@@ -199,8 +182,6 @@ CellType Board::RandomCandy()
 
 CellType Board::RandomCandyAvoiding(int x, int y)
 {
-    // Try to avoid creating immediate 3-in-a-row while building the initial grid.
-    // We will try a few random candidates; if all fail, fallback to the last one.
     for (int attempt = 0; attempt < 8; ++attempt)
     {
         CellType c = RandomCandy();
@@ -225,7 +206,7 @@ CellType Board::RandomCandyAvoiding(int x, int y)
         }
         if (attempt == 7)
         {
-            return c; // give up after several tries
+            return c;
         }
     }
 

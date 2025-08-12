@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "visuals.h"
 
 BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) const
 {
@@ -28,21 +29,22 @@ BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) cons
     return layout;
 }
 
-void Renderer::SetColorForCell(CellType type) const
+void Renderer::SetColorForCell(CellType type, uint8_t alpha) const
 {
+    SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
     switch (type)
     {
-        case CellType::Red:     SDL_SetRenderDrawColor(r_, 230, 68, 68, 255); break;
-        case CellType::Green:   SDL_SetRenderDrawColor(r_, 80, 200, 120, 255); break;
-        case CellType::Blue:    SDL_SetRenderDrawColor(r_, 77, 148, 255, 255); break;
-        case CellType::Yellow:  SDL_SetRenderDrawColor(r_, 245, 211, 66, 255); break;
-        case CellType::Purple:  SDL_SetRenderDrawColor(r_, 170, 110, 255, 255); break;
-        case CellType::Orange:  SDL_SetRenderDrawColor(r_, 255, 160, 80, 255); break;
-        default:                SDL_SetRenderDrawColor(r_, 200, 200, 200, 255); break;
+        case CellType::Red:     SDL_SetRenderDrawColor(r_, 230, 68, 68, alpha); break;
+        case CellType::Green:   SDL_SetRenderDrawColor(r_, 80, 200, 120, alpha); break;
+        case CellType::Blue:    SDL_SetRenderDrawColor(r_, 77, 148, 255, alpha); break;
+        case CellType::Yellow:  SDL_SetRenderDrawColor(r_, 245, 211, 66, alpha); break;
+        case CellType::Purple:  SDL_SetRenderDrawColor(r_, 170, 110, 255, alpha); break;
+        case CellType::Orange:  SDL_SetRenderDrawColor(r_, 255, 160, 80, alpha); break;
+        default:                SDL_SetRenderDrawColor(r_, 200, 200, 200, alpha); break;
     }
 }
 
-void Renderer::Draw(const Board & board, const BoardLayout & layout) const
+void Renderer::DrawBackground(const BoardLayout & layout) const
 {
     SDL_SetRenderDrawColor(r_, 22, 10, 40, 255);
     SDL_RenderClear(r_);
@@ -51,22 +53,33 @@ void Renderer::Draw(const Board & board, const BoardLayout & layout) const
     SDL_SetRenderDrawColor(r_, 40, 20, 70, 255);
     SDL_RenderFillRect(r_, &bg);
 
+    // Optional grid shadows
+    SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
     for (int y = 0; y < Board::kHeight; ++y)
     {
         for (int x = 0; x < Board::kWidth; ++x)
         {
-            const IVec2 p {x, y};
             const int px = layout.origin_x + x * (layout.cell_size + layout.gap);
             const int py = layout.origin_y + y * (layout.cell_size + layout.gap);
-
             SDL_Rect rect { px, py, layout.cell_size, layout.cell_size };
-
-            SetColorForCell(board.Get(p));
-            SDL_RenderFillRect(r_, &rect);
-
-            SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
             SDL_RenderDrawRect(r_, &rect);
         }
+    }
+}
+
+void Renderer::DrawTiles(const std::vector<VisualTile> & tiles, const BoardLayout & layout) const
+{
+    for (const auto & t : tiles)
+    {
+        const int px = static_cast<int>(t.x);
+        const int py = static_cast<int>(t.y);
+        SDL_Rect rect { px, py, layout.cell_size, layout.cell_size };
+        const uint8_t a = static_cast<uint8_t>(std::clamp(t.alpha, 0.0f, 1.0f) * 255.0f);
+        SetColorForCell(t.type, a);
+        SDL_RenderFillRect(r_, &rect);
+
+        SDL_SetRenderDrawColor(r_, 15, 5, 35, a);
+        SDL_RenderDrawRect(r_, &rect);
     }
 
     SDL_RenderPresent(r_);
