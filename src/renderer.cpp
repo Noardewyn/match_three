@@ -2,14 +2,12 @@
 
 BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) const
 {
-    // Fit the board to the shorter window side with some padding.
     const int cols = Board::kWidth;
     const int rows = Board::kHeight;
 
     const int max_board_w = window_w - 20;
     const int max_board_h = window_h - 20;
 
-    // cell_size * cols + gap*(cols-1) <= max_board_w  (same for height)
     const int cell_w = (max_board_w - gap_px * (cols - 1)) / cols;
     const int cell_h = (max_board_h - gap_px * (rows - 1)) / rows;
     const int cell_size = std::max(8, std::min(cell_w, cell_h));
@@ -17,7 +15,6 @@ BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) cons
     const int width_px = cell_size * cols + gap_px * (cols - 1);
     const int height_px = cell_size * rows + gap_px * (rows - 1);
 
-    // Center the board.
     const int origin_x = (window_w - width_px) / 2;
     const int origin_y = (window_h - height_px) / 2;
 
@@ -47,16 +44,13 @@ void Renderer::SetColorForCell(CellType type) const
 
 void Renderer::Draw(const Board & board, const BoardLayout & layout) const
 {
-    // Clear background
     SDL_SetRenderDrawColor(r_, 22, 10, 40, 255);
     SDL_RenderClear(r_);
 
-    // Optional rounded board background
     SDL_Rect bg { layout.origin_x - 8, layout.origin_y - 8, layout.width_px + 16, layout.height_px + 16 };
     SDL_SetRenderDrawColor(r_, 40, 20, 70, 255);
     SDL_RenderFillRect(r_, &bg);
 
-    // Draw cells
     for (int y = 0; y < Board::kHeight; ++y)
     {
         for (int x = 0; x < Board::kWidth; ++x)
@@ -70,7 +64,6 @@ void Renderer::Draw(const Board & board, const BoardLayout & layout) const
             SetColorForCell(board.Get(p));
             SDL_RenderFillRect(r_, &rect);
 
-            // Optional subtle outline
             SDL_SetRenderDrawColor(r_, 15, 5, 35, 255);
             SDL_RenderDrawRect(r_, &rect);
         }

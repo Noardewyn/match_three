@@ -10,8 +10,7 @@ bool Game::Init()
         return false;
     }
 
-    // On mobile SDL will create a full-screen window by default.
-    window_ = SDL_CreateWindow("Match3 (Iteration 1)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    window_ = SDL_CreateWindow("Match3 (Iteration 2)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                720, 1280, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
     if (!window_)
     {
@@ -28,9 +27,8 @@ bool Game::Init()
 
     drawer_ = new Renderer(renderer_);
 
-    // Randomize the board with a time-based seed.
     const uint32_t seed = static_cast<uint32_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-    board_.Randomize(seed);
+    board_.GenerateInitial(seed);
 
     UpdateLayout();
     return true;
@@ -56,11 +54,8 @@ void Game::Run()
             {
                 if (auto req = input_.HandleEvent(e, layout_))
                 {
-                    // Validate and perform swap if in bounds & adjacent.
-                    if (board_.InBounds(req->a) && board_.InBounds(req->b) && board_.AreAdjacent(req->a, req->b))
-                    {
-                        board_.Swap(req->a, req->b);
-                    }
+                    // Try to swap and resolve. If no matches – swap is reverted inside.
+                    board_.TrySwapAndResolve(req->a, req->b);
                 }
             }
         }

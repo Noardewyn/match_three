@@ -15,4 +15,3 @@ int main(int argc, char ** argv)
     g.Shutdown();
     return 0;
 }
-

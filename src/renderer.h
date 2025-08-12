@@ -3,15 +3,14 @@
 
 #include <SDL.h>
 
-// Layout parameters describing where and how the board is drawn.
 struct BoardLayout
 {
-    int origin_x {0};   // top-left of board area
+    int origin_x {0};
     int origin_y {0};
-    int cell_size {0};  // size of each square cell in pixels
-    int gap {2};        // space between cells in pixels
-    int width_px {0};   // total drawn width
-    int height_px {0};  // total drawn height
+    int cell_size {0};
+    int gap {2};
+    int width_px {0};
+    int height_px {0};
 };
 
 class Renderer
@@ -26,3 +25,4 @@ private:
     SDL_Renderer * r_ {nullptr};
     void SetColorForCell(CellType type) const;
 };
+
