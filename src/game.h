@@ -24,6 +24,8 @@ private:
     AnimationSystem anims_;
     VisualBoard vboard_;
 
+    int score_ {0};
+
     BoardLayout layout_{};
 
     enum class Phase

@@ -3,8 +3,10 @@
 #include "visuals.h"
 
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <vector>
 #include <optional>
+#include <string>
 
 struct BoardLayout
 {
@@ -19,7 +21,8 @@ struct BoardLayout
 class Renderer
 {
 public:
-    explicit Renderer(SDL_Renderer * r) : r_(r) {}
+    explicit Renderer(SDL_Renderer * r);
+    ~Renderer();
 
     BoardLayout ComputeLayout(int window_w, int window_h, int gap_px = 4) const;
 
@@ -34,8 +37,11 @@ public:
                    const std::optional<IVec2> & secondary = std::nullopt,
                    float pulse_t = 0.0f) const;
 
+    void DrawScore(int score) const;
+
 private:
     SDL_Renderer * r_ { nullptr };
+    TTF_Font * font_ { nullptr };
 
     void SetColorForCell(CellType type, uint8_t alpha) const;
 

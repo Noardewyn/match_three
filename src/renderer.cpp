@@ -3,6 +3,21 @@
 #include <algorithm>
 #include <cmath>
 
+Renderer::Renderer(SDL_Renderer * r)
+    : r_(r)
+{
+    font_ = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 32);
+}
+
+Renderer::~Renderer()
+{
+    if (font_)
+    {
+        TTF_CloseFont(font_);
+        font_ = nullptr;
+    }
+}
+
 BoardLayout Renderer::ComputeLayout(int window_w, int window_h, int gap_px) const
 {
     const int cols = Board::kWidth;
@@ -134,7 +149,7 @@ void Renderer::DrawHighlightCell(const BoardLayout & layout,
     SDL_RenderFillRect(r_, &r);
 
     // Thick border: 5 px primary, 4 px secondary.
-    const int thick = is_primary ? 20 : 20;
+    const int thick = is_primary ? 5 : 4;
     if (is_primary)
     {
         SDL_SetRenderDrawColor(r_, 255, 255, 255, 200);
@@ -189,6 +204,32 @@ void Renderer::DrawTiles(const std::vector<VisualTile> & tiles,
             DrawHighlightCell(layout, *secondary, false, pulse_t);
         }
     }
+}
 
-    SDL_RenderPresent(r_);
+void Renderer::DrawScore(int score) const
+{
+    if (!font_) return;
+
+    const std::string text = "Score: " + std::to_string(score);
+    SDL_Color color{255, 255, 255, 255};
+    SDL_Surface * surf = TTF_RenderUTF8_Blended(font_, text.c_str(), color);
+    if (!surf) return;
+    SDL_Texture * tex = SDL_CreateTextureFromSurface(r_, surf);
+    int w = surf->w;
+    int h = surf->h;
+    SDL_FreeSurface(surf);
+    if (!tex) return;
+
+    const int padding = 8;
+    SDL_Rect frame { padding, padding, w + padding * 2, h + padding * 2 };
+    SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(r_, 0, 0, 0, 150);
+    SDL_RenderFillRect(r_, &frame);
+    SDL_SetRenderDrawColor(r_, 255, 255, 255, 255);
+    SDL_RenderDrawRect(r_, &frame);
+
+    SDL_Rect dst { frame.x + padding, frame.y + padding, w, h };
+    SDL_RenderCopy(r_, tex, nullptr, &dst);
+
+    SDL_DestroyTexture(tex);
 }
