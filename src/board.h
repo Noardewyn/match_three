@@ -37,8 +37,10 @@ public:
     // Low-level swap (used by the state machine).
     void Swap(const IVec2 & a, const IVec2 & b);
 
-    // Public match finding.
-    bool FindMatches(std::vector<bool> & out_mask) const;
+    // Public match finding. Returns true if any matches were found and
+    // fills out_mask with matched cells. Additionally outputs the number
+    // of distinct match groups and total matched cells for scoring.
+    bool FindMatches(std::vector<bool> & out_mask, int & out_groups, int & out_cells) const;
 
     // Collapse columns and refill with new candies.
     // Mutates the board to the post-collapse state and returns planned tile moves and spawns.
@@ -53,7 +55,7 @@ private:
     int Index(const IVec2 & p) const;
 
     // Internal helpers
-    bool FindMatchesMask(std::vector<bool> & out_mask) const;
+    bool FindMatchesMask(std::vector<bool> & out_mask, int & out_groups, int & out_cells) const;
     CellType RandomCandy();
     CellType RandomCandyAvoiding(int x, int y);
 };

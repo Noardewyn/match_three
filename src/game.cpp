@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <optional>
+#include <SDL_ttf.h>
 
 static float NowSeconds()
 {
@@ -31,6 +32,12 @@ bool Game::Init()
     if (!sdl_renderer_)
     {
         SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+        return false;
+    }
+
+    if (TTF_Init() != 0)
+    {
+        SDL_Log("TTF_Init failed: %s", TTF_GetError());
         return false;
     }
 
@@ -107,6 +114,8 @@ void Game::Run()
 
         drawer_->DrawBackground(layout_);
         drawer_->DrawTiles(vboard_.Tiles(), layout_, primary, secondary, now);
+        drawer_->DrawScore(score_);
+        SDL_RenderPresent(sdl_renderer_);
         SDL_Delay(1);
     }
 }
@@ -119,6 +128,7 @@ void Game::Shutdown()
     if (sdl_renderer_) { SDL_DestroyRenderer(sdl_renderer_); sdl_renderer_ = nullptr; }
     if (window_) { SDL_DestroyWindow(window_); window_ = nullptr; }
 
+    TTF_Quit();
     SDL_Quit();
 }
 
@@ -147,7 +157,9 @@ void Game::StepStateMachine()
         }
         case Phase::CheckAfterSwap:
         {
-            if (!board_.FindMatches(last_mask_))
+            int groups = 0;
+            int cells = 0;
+            if (!board_.FindMatches(last_mask_, groups, cells))
             {
                 // Revert swap
                 board_.Swap(last_swap_a_, last_swap_b_);
@@ -156,6 +168,7 @@ void Game::StepStateMachine()
             }
             else
             {
+                score_ += cells * groups;
                 // Pulse + Fade together in a single group
                 const uint64_t g = anims_.BeginGroup();
                 vboard_.AnimatePulseMask(last_mask_, anims_, t_fade_ * 1.0f, 0.7f, g);
@@ -207,8 +220,11 @@ void Game::StepStateMachine()
 
         case Phase::CascadeCheck:
         {
-            if (board_.FindMatches(last_mask_))
+            int groups = 0;
+            int cells = 0;
+            if (board_.FindMatches(last_mask_, groups, cells))
             {
+                score_ += cells * groups;
                 const uint64_t g = anims_.BeginGroup();
                 vboard_.AnimatePulseMask(last_mask_, anims_, t_fade_ * 1.0f, 0.7f, g);
                 vboard_.AnimateFadeMask(last_mask_, anims_, t_fade_, g);
