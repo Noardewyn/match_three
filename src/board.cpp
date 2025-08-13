@@ -52,10 +52,12 @@ void Board::Swap(const IVec2 & a, const IVec2 & b)
     std::swap(cells_[Index(a)], cells_[Index(b)]);
 }
 
-bool Board::FindMatches(std::vector<bool> & out_mask) const
+bool Board::FindMatches(std::vector<bool> & out_mask, int & out_groups, int & out_cells) const
 {
     out_mask.assign(kWidth * kHeight, false);
-    return FindMatchesMask(out_mask);
+    out_groups = 0;
+    out_cells = 0;
+    return FindMatchesMask(out_mask, out_groups, out_cells);
 }
 
 int Board::CollapseAndRefillPlanned(const std::vector<bool> & mask,
@@ -107,7 +109,7 @@ int Board::Index(const IVec2 & p) const
     return p.y * kWidth + p.x;
 }
 
-bool Board::FindMatchesMask(std::vector<bool> & out_mask) const
+bool Board::FindMatchesMask(std::vector<bool> & out_mask, int & out_groups, int & out_cells) const
 {
     bool any = false;
 
@@ -127,9 +129,15 @@ bool Board::FindMatchesMask(std::vector<bool> & out_mask) const
                 if (run_len >= 3)
                 {
                     any = true;
+                    ++out_groups;
                     for (int k = 0; k < run_len; ++k)
                     {
-                        out_mask[Index({x - 1 - k, y})] = true;
+                        const int idx = Index({x - 1 - k, y});
+                        if (!out_mask[idx])
+                        {
+                            out_mask[idx] = true;
+                            ++out_cells;
+                        }
                     }
                 }
                 run_len = 1;
@@ -157,9 +165,15 @@ bool Board::FindMatchesMask(std::vector<bool> & out_mask) const
                 if (run_len >= 3)
                 {
                     any = true;
+                    ++out_groups;
                     for (int k = 0; k < run_len; ++k)
                     {
-                        out_mask[Index({x, y - 1 - k})] = true;
+                        const int idx = Index({x, y - 1 - k});
+                        if (!out_mask[idx])
+                        {
+                            out_mask[idx] = true;
+                            ++out_cells;
+                        }
                     }
                 }
                 run_len = 1;
