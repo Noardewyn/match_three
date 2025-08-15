@@ -4,8 +4,11 @@
 #include "input.h"
 #include "animation.h"
 #include "visuals.h"
+#include "config.h"
 
 #include <SDL.h>
+#include <optional>
+#include <utility>
 
 class Game
 {
@@ -52,6 +55,11 @@ private:
     const float t_fade_ = 0.14f;
     const float t_drop_ = 0.20f;
     const float t_bump_ = 0.10f;
+
+    Config config_{};
+    float hint_delay_ {5.0f};
+    float idle_time_ {0.0f};
+    std::optional<std::pair<IVec2, IVec2>> hint_swap_;
 
     void UpdateLayout();
     void StepStateMachine();

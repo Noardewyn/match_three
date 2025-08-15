@@ -3,6 +3,7 @@
 #include <chrono>
 #include <optional>
 #include <SDL_ttf.h>
+#include <SDL.h>
 
 static float NowSeconds()
 {
@@ -45,6 +46,10 @@ bool Game::Init()
 
     const uint32_t seed = static_cast<uint32_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     board_.GenerateInitial(seed);
+
+    // Load configuration
+    config_.Load("assets/config.yaml");
+    hint_delay_ = config_.hint_delay_seconds;
 
     UpdateLayout();
     vboard_.BuildFromBoard(board_, layout_);
@@ -94,6 +99,15 @@ void Game::Run()
                     input_.HandleEvent(e, layout_);
                 }
             }
+
+            // Any user interaction resets idle timer and hint
+            if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP ||
+                e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP ||
+                e.type == SDL_KEYDOWN || e.type == SDL_KEYUP || e.type == SDL_TEXTINPUT)
+            {
+                idle_time_ = 0.0f;
+                hint_swap_.reset();
+            }
         }
 
         float now = NowSeconds();
@@ -103,6 +117,20 @@ void Game::Run()
 
         StepStateMachine();
 
+        if (phase_ == Phase::Idle && !anims_.HasActive())
+        {
+            idle_time_ += dt;
+            if (idle_time_ >= hint_delay_ && !hint_swap_)
+            {
+                hint_swap_ = board_.FindAnySwap();
+            }
+        }
+        else
+        {
+            idle_time_ = 0.0f;
+            hint_swap_.reset();
+        }
+
         std::optional<IVec2> primary;
         std::optional<IVec2> secondary;
 
@@ -110,6 +138,11 @@ void Game::Run()
         {
             primary = input_.SelectedCell();
             secondary = input_.PotentialTargetCell(layout_);
+            if (!primary && hint_swap_)
+            {
+                primary = hint_swap_->first;
+                secondary = hint_swap_->second;
+            }
         }
 
         drawer_->DrawBackground(layout_);

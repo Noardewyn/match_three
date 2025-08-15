@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <vector>
 
 Board::Board()
     : cells_(kWidth * kHeight, CellType::Red)
@@ -102,6 +103,45 @@ int Board::CollapseAndRefillPlanned(const std::vector<bool> & mask,
     }
 
     return removed;
+}
+
+std::optional<std::pair<IVec2, IVec2>> Board::FindAnySwap() const
+{
+    std::vector<bool> mask;
+    int groups = 0;
+    int cells = 0;
+
+    for (int y = 0; y < kHeight; ++y)
+    {
+        for (int x = 0; x < kWidth; ++x)
+        {
+            IVec2 a{x, y};
+
+            IVec2 right{x + 1, y};
+            if (InBounds(right))
+            {
+                Board tmp = *this;
+                tmp.Swap(a, right);
+                if (tmp.FindMatches(mask, groups, cells))
+                {
+                    return std::make_pair(a, right);
+                }
+            }
+
+            IVec2 down{x, y + 1};
+            if (InBounds(down))
+            {
+                Board tmp = *this;
+                tmp.Swap(a, down);
+                if (tmp.FindMatches(mask, groups, cells))
+                {
+                    return std::make_pair(a, down);
+                }
+            }
+        }
+    }
+
+    return std::nullopt;
 }
 
 int Board::Index(const IVec2 & p) const
