@@ -6,7 +6,7 @@
 Renderer::Renderer(SDL_Renderer * r)
     : r_(r)
 {
-    font_ = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 32);
+    font_ = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 150);
 }
 
 Renderer::~Renderer()
@@ -220,8 +220,8 @@ void Renderer::DrawScore(int score) const
     SDL_FreeSurface(surf);
     if (!tex) return;
 
-    const int padding = 8;
-    SDL_Rect frame { padding, padding, w + padding * 2, h + padding * 2 };
+    const int padding = 20;
+    SDL_Rect frame { padding, padding + 150, w + padding * 2, h + padding * 2 };
     SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(r_, 0, 0, 0, 150);
     SDL_RenderFillRect(r_, &frame);
