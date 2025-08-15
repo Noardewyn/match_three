@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <optional>
+#include <utility>
 
 struct Move
 {
@@ -47,6 +48,10 @@ public:
     int CollapseAndRefillPlanned(const std::vector<bool> & mask,
                                  std::vector<Move> & out_moves,
                                  std::vector<Spawn> & out_spawns);
+
+    // Find any possible swap that would produce a match.
+    // Returns the pair of coordinates to swap if available.
+    std::optional<std::pair<IVec2, IVec2>> FindAnySwap() const;
 
 private:
     std::vector<CellType> cells_;
